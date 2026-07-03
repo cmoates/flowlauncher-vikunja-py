@@ -53,53 +53,102 @@ class ConfigManager:
             return self._initialize_settings()
 
     def _initialize_settings(self) -> Dict[str, Any]:
-        """Create new settings structure"""
+        """Create new settings structure with default 'vk' keyword"""
         return {
-            "configurations": {}
+            "keywords": {
+                "vk": {
+                    "serverUrl": "",
+                    "apiToken": "",
+                    "defaultProjectId": 1,
+                    "parsingMode": "vikunja"
+                }
+            }
         }
 
-    def get_current_config(self) -> Optional[Dict[str, Any]]:
+    def get_keyword_config(self, keyword: str) -> Optional[Dict[str, Any]]:
         """
-        Get configuration for the current plugin instance
-        
-        If no config exists for this ID, inherits from another instance.
-        """
-        configs = self.settings.get("configurations", {})
-        
-        # If this plugin ID already has config, return it
-        if self.plugin_id in configs:
-            return configs[self.plugin_id]
-        
-        # New instance - try to inherit from another instance if available
-        if configs:
-            # Copy first available config (likely to be correct)
-            existing_config = next(iter(configs.values()))
-            config = dict(existing_config)
-            configs[self.plugin_id] = config
-            self._save_settings()
-            return config
-        
-        # No existing config - return empty/default
-        return None
-
-    def save_config(self, config: Dict[str, Any]) -> bool:
-        """
-        Save configuration for current plugin instance
+        Get configuration for a specific keyword
         
         Args:
+            keyword: The keyword (e.g., 'vk', 'vw', 'vs')
+            
+        Returns:
+            Configuration dictionary or None if keyword not found
+        """
+        keywords = self.settings.get("keywords", {})
+        return keywords.get(keyword)
+
+    def save_keyword_config(self, keyword: str, config: Dict[str, Any]) -> bool:
+        """
+        Save configuration for a specific keyword
+        
+        Args:
+            keyword: The keyword to save config for
             config: Configuration dictionary
             
         Returns:
             True if successful, False otherwise
         """
         try:
-            configs = self.settings.get("configurations", {})
-            configs[self.plugin_id] = config
-            self.settings["configurations"] = configs
+            keywords = self.settings.get("keywords", {})
+            keywords[keyword] = config
+            self.settings["keywords"] = keywords
             self._save_settings()
             return True
         except Exception as e:
-            print(f"Error saving config: {e}", file=__import__("sys").stderr)
+            print(f"Error saving keyword config: {e}", file=__import__("sys").stderr)
+            return False
+
+    def add_keyword(self, keyword: str, config: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Add a new keyword with configuration
+        
+        Args:
+            keyword: The keyword to add
+            config: Configuration for this keyword (uses default if not provided)
+            
+        Returns:
+            True if successful, False if keyword already exists
+        """
+        keywords = self.settings.get("keywords", {})
+        if keyword in keywords:
+            return False
+        
+        if config is None:
+            config = {
+                "serverUrl": "",
+                "apiToken": "",
+                "defaultProjectId": 1,
+                "parsingMode": "vikunja"
+            }
+        
+        return self.save_keyword_config(keyword, config)
+
+    def remove_keyword(self, keyword: str) -> bool:
+        """
+        Remove a keyword
+        
+        Args:
+            keyword: The keyword to remove
+            
+        Returns:
+            True if successful, False if keyword not found or is last one
+        """
+        keywords = self.settings.get("keywords", {})
+        if keyword not in keywords:
+            return False
+        
+        # Don't allow removing the last keyword
+        if len(keywords) <= 1:
+            return False
+        
+        try:
+            del keywords[keyword]
+            self.settings["keywords"] = keywords
+            self._save_settings()
+            return True
+        except Exception as e:
+            print(f"Error removing keyword: {e}", file=__import__("sys").stderr)
             return False
 
     def _save_settings(self) -> bool:
@@ -112,6 +161,6 @@ class ConfigManager:
             print(f"Error writing settings: {e}", file=__import__("sys").stderr)
             return False
 
-    def get_all_instances(self) -> Dict[str, Dict[str, Any]]:
-        """Get all configured plugin instances"""
-        return self.settings.get("configurations", {})
+    def get_all_keywords(self) -> Dict[str, Dict[str, Any]]:
+        """Get all configured keywords and their configurations"""
+        return self.settings.get("keywords", {})

@@ -1,160 +1,205 @@
-#!/usr/bin/env python3
 """
-Flow Launcher Vikunja Plugin - Main Entry Point
-Supports multitenant configuration for multiple plugin instances
+Flow Launcher plugin for Vikunja with multi-keyword support
+
+Each keyword can have its own complete configuration including:
+- Server URL
+- API Token
+- Default Project ID
+- Parsing Mode (Vikunja or Todoist syntax)
+- Future extensibility (color, labels, etc.)
 """
 
-import sys
-import json
-from pathlib import Path
-
-try:
-    from flowlauncher import FlowLauncher
-except ImportError:
-    # Fallback for testing without flowlauncher package
-    class FlowLauncher:
-        def __call__(self):
-            pass
-
+from pyflowlauncher import FlowLauncher
 from config import ConfigManager
-from vikunja_api import VikunjaClient
 from task_parser import TaskParser
+from vikunja_api import VikunjaClient
 
 
 class VikunjaPlugin(FlowLauncher):
-    """Flow Launcher plugin for Vikunja task creation"""
+    """Flow Launcher plugin for Vikunja task creation with multi-keyword support"""
 
     def __init__(self):
+        """Initialize the plugin"""
         super().__init__()
         self.config_manager = ConfigManager()
         self.task_parser = TaskParser()
-        self.client = None
-        self._init_client()
-
-    def _init_client(self):
-        """Initialize Vikunja API client with current plugin config"""
-        config = self.config_manager.get_current_config()
-        if config and config.get('serverUrl') and config.get('apiToken'):
-            self.client = VikunjaClient(
-                server_url=config['serverUrl'],
-                api_token=config['apiToken']
-            )
+        self.api_clients = {}  # Cache API clients per keyword
 
     def query(self, query_str: str):
         """
-        Handle query input from Flow Launcher
+        Handle search query from Flow Launcher
         
         Args:
-            query_str: User's search input
+            query_str: The search query (keyword already stripped by Flow Launcher)
             
         Returns:
-            List of result dictionaries for Flow Launcher display
+            List of result dictionaries for Flow Launcher
         """
-        results = []
-        config = self.config_manager.get_current_config()
-
-        # Empty query - show syntax help
-        if not query_str.strip():
-            parsing_mode = config.get('parsingMode', 'vikunja') if config else 'vikunja'
-            if parsing_mode == 'todoist':
-                syntax_help = "Enter a task with optional due date and tags (#project, p1-p5, @label)"
-            else:
-                syntax_help = "Enter a task with optional due date and tags (+project, !1-5, *label)"
-            
-            results.append({
-                "Title": "Vikunja Quick Add",
-                "SubTitle": syntax_help,
-                "IcoPath": "Images/app.png"
-            })
-            return results
-
-        # Validate configuration
-        if not config or not config.get('serverUrl') or not config.get('apiToken'):
-            results.append({
-                "Title": "⚠️ Configuration Required",
-                "SubTitle": "Please configure server URL and API token in settings",
-                "IcoPath": "Images/app.png"
-            })
-            return results
-
         try:
+            # Extract the keyword from the raw RPC request
+            keyword = self._extract_keyword_from_rpc()
+            
+            # Get configuration for this keyword
+            config = self.config_manager.get_keyword_config(keyword)
+            if not config:
+                return self._error_result(f"Keyword '{keyword}' not configured")
+            
+            # Validate configuration
+            if not config.get("serverUrl") or not config.get("apiToken"):
+                return self._error_result(f"Keyword '{keyword}' is not fully configured. Set server URL and API token.")
+            
+            # If no query, show help
+            if not query_str.strip():
+                return [{
+                    "Title": f"Create task in Vikunja (project {config['defaultProjectId']})",
+                    "SubTitle": "Type a task description to add to Vikunja",
+                    "IcoPath": "Images/app.png"
+                }]
+            
             # Parse the task
-            parsing_mode = config.get('parsingMode', 'vikunja')
-            parsed_task = self.task_parser.parse(query_str, mode=parsing_mode)
-
-            # Build preview subtitle
-            subtitle = self._build_preview(parsed_task, config)
-
-            results.append({
-                "Title": f"Create task: {parsed_task['title']}",
-                "SubTitle": subtitle,
+            parsing_mode = config.get("parsingMode", "vikunja")
+            parsed_task = self.task_parser.parse(query_str, parsing_mode)
+            
+            # Use default project if not specified
+            if not parsed_task.get("project"):
+                parsed_task["project"] = config["defaultProjectId"]
+            
+            # Build preview
+            preview = self._build_preview(parsed_task, config)
+            
+            return [{
+                "Title": f"Create: {parsed_task['title']}",
+                "SubTitle": preview,
                 "IcoPath": "Images/app.png",
                 "JsonRPCAction": {
                     "method": "create_task",
-                    "parameters": [parsed_task]
+                    "parameters": [keyword, parsed_task]
                 }
-            })
+            }]
+        
         except Exception as e:
-            results.append({
-                "Title": "Error parsing task",
-                "SubTitle": str(e),
-                "IcoPath": "Images/app.png"
-            })
+            return self._error_result(f"Error: {str(e)}")
 
-        return results
-
-    def create_task(self, parsed_task: dict):
+    def create_task(self, keyword: str, parsed_task: dict):
         """
         Create a task in Vikunja
         
         Args:
-            parsed_task: Dictionary with task details (title, description, etc.)
-            
-        Returns:
-            True if successful, False otherwise
+            keyword: The keyword that triggered this action
+            parsed_task: The parsed task dictionary
         """
-        self._init_client()
-        if not self.client:
-            self.show_message("Error", "Vikunja not configured")
-            return False
-
         try:
-            config = self.config_manager.get_current_config()
-            default_project_id = config.get('defaultProjectId', 1) if config else 1
+            config = self.config_manager.get_keyword_config(keyword)
+            if not config:
+                self._show_error(f"Keyword '{keyword}' not found in configuration")
+                return
             
-            success = self.client.create_task(parsed_task, default_project_id)
+            # Get or create API client for this keyword
+            if keyword not in self.api_clients:
+                self.api_clients[keyword] = VikunjaClient(
+                    config["serverUrl"],
+                    config["apiToken"]
+                )
             
-            if success:
-                self.show_message("Task Created", f"Successfully created: {parsed_task['title']}")
+            client = self.api_clients[keyword]
+            
+            # Determine project ID
+            project_id = parsed_task.get("project")
+            if isinstance(project_id, str):
+                # User specified project name, look it up
+                found_id = client.find_project_by_name_async(project_id)
+                if not found_id:
+                    self._show_error(f"Project '{project_id}' not found")
+                    return
+                project_id = found_id
             else:
-                self.show_message("Error", "Failed to create task. Check logs for details.")
+                # Use numeric project ID
+                project_id = int(project_id or config["defaultProjectId"])
             
-            return success
+            # Create the task
+            success = client.create_task(parsed_task, project_id)
+            if success:
+                self._show_message(f"✓ Task created: {parsed_task['title']}")
+            else:
+                self._show_error("Failed to create task")
+        
         except Exception as e:
-            self.show_message("Error", f"Exception: {str(e)}")
-            return False
+            self._show_error(f"Error creating task: {str(e)}")
+
+    def _extract_keyword_from_rpc(self) -> str:
+        """
+        Extract the keyword from the raw RPC request
+        
+        Flow Launcher strips the keyword before passing to query(), but we can
+        access the original input via rpc_request to determine which keyword was used.
+        
+        Returns:
+            The keyword that triggered this query (e.g., 'vk', 'vw')
+        """
+        try:
+            # Access raw query from RPC context
+            raw_query = self.rpc_request.get("rawQuery", {})
+            full_input = raw_query.get("RawQuery", "")
+            
+            # Extract first word as keyword
+            if full_input:
+                keyword = full_input.split()[0].lower()
+                # Validate it's a known keyword
+                all_keywords = self.config_manager.get_all_keywords()
+                if keyword in all_keywords:
+                    return keyword
+        except Exception:
+            pass
+        
+        # Fallback to first configured keyword
+        all_keywords = self.config_manager.get_all_keywords()
+        if all_keywords:
+            return next(iter(all_keywords.keys()))
+        
+        return "vk"
 
     def _build_preview(self, task: dict, config: dict) -> str:
-        """Build preview subtitle for task result"""
-        parts = [f"Title:'{task['title']}'"]
+        """
+        Build preview subtitle for task result
         
-        if task.get('labels'):
-            parts.append(f"Labels:[{','.join(task['labels'])}]")
+        Args:
+            task: Parsed task dictionary
+            config: Configuration for this keyword
+            
+        Returns:
+            Preview string
+        """
+        parts = []
         
-        if task.get('project'):
-            parts.append(f"Project:{task['project']}")
-        elif config.get('defaultProjectId'):
-            parts.append("Project:Default")
+        project = task.get("project") or config.get("defaultProjectId", 1)
+        parts.append(f"Project: {project}")
         
-        if task.get('dueDate'):
-            parts.append(f"Due:{task['dueDate']}")
+        if task.get("labels"):
+            parts.append(f"Labels: {', '.join(task['labels'])}")
         
-        if task.get('priority'):
-            priority_names = {1: "Low", 2: "Medium", 3: "High", 4: "Urgent", 5: "DO NOW"}
-            priority_name = priority_names.get(task['priority'], str(task['priority']))
-            parts.append(f"Priority:{priority_name}")
+        if task.get("priority"):
+            parts.append(f"Priority: {task['priority']}")
+        
+        if task.get("dueDate"):
+            parts.append(f"Due: {task['dueDate']}")
         
         return " | ".join(parts)
+
+    def _error_result(self, message: str):
+        """Create an error result"""
+        return [{
+            "Title": "Error",
+            "SubTitle": message,
+            "IcoPath": "Images/warning.png"
+        }]
+
+    def _show_message(self, message: str):
+        """Show a message (Flow Launcher will handle this)"""
+        print(message)
+
+    def _show_error(self, message: str):
+        """Show an error message"""
+        print(f"Error: {message}")
 
 
 if __name__ == "__main__":

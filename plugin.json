@@ -1,9 +1,9 @@
 {
   "$schema": "https://www.flowlauncher.com/schemas/plugin.schema.json",
-  "ID": "flowlauncher-vikunja-py-default",
+  "ID": "flowlauncher-vikunja-py",
   "ActionKeywords": ["vk"],
-  "Name": "Vikunja",
-  "Description": "Quickly add tasks to Vikunja with natural language parsing",
+  "Name": "Vikunja Multi-Keyword Router",
+  "Description": "Quickly add tasks to Vikunja. Use multiple keywords for different projects.",
   "Author": "cmoates",
   "Version": "2.0.0",
   "Language": "Python",
