@@ -1,0 +1,12 @@
+{
+  "$schema": "https://www.flowlauncher.com/schemas/plugin.schema.json",
+  "ID": "flowlauncher-vikunja-py-default",
+  "ActionKeywords": ["vk"],
+  "Name": "Vikunja",
+  "Description": "Quickly add tasks to Vikunja with natural language parsing",
+  "Author": "cmoates",
+  "Version": "2.0.0",
+  "Language": "Python",
+  "Website": "https://github.com/cmoates/flowlauncher-vikunja-py",
+  "ExecuteFileName": "main.py"
+}
