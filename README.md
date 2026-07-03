@@ -247,3 +247,8 @@ All keywords share the same parsing logic and API client code, so adding keyword
 ## License
 
 See LICENSE file for details.
+
+## Credits
+
+This plugin was inspired by the original Vikunja Flow Launcher plugin in C#.
+
