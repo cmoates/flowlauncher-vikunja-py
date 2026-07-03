@@ -42,8 +42,11 @@ jobs:
     # 5. Vendor dependencies straight into the ./lib directory
     - name: Install and vendor dependencies
       run: |
+        # Always start fresh - remove old lib if it exists
+        if (Test-Path ./lib) { Remove-Item -Recurse -Force ./lib }
         mkdir lib
-        pip install requests pyflowlauncher python-dateutil --target ./lib
+        # Install dependencies fresh from PyPI based on requirements.txt versions
+        pip install requests>=2.28.0 pyflowlauncher>=0.10.0 python-dateutil>=2.8.2 --target ./lib --upgrade
 
     # 6. Clean up unnecessary cache artifacts to keep the zip file size tiny
     - name: Clean up python cache files

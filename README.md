@@ -178,6 +178,33 @@ pip install -r requirements.txt
 python -c "from task_parser import TaskParser; print(TaskParser().parse('buy milk tomorrow +personal *shopping !2'))"
 ```
 
+### Dependency Vendoring
+
+The plugin uses **vendored dependencies** to ensure it works without requiring users to install packages. Here's how it works:
+
+**For Release Builds:**
+- GitHub Actions workflow installs dependencies fresh from `requirements.txt` into `./lib`
+- Dependencies are included in the packaged `.zip` file
+- The `lib/` directory is ignored in git (see `.gitignore`)
+- Each release gets fresh, up-to-date dependencies
+
+**For Local Development:**
+```bash
+# Vendor dependencies locally (Linux/Mac)
+./vendor-deps.sh
+
+# Or on Windows
+vendor-deps.bat
+```
+
+This creates `./lib` with all dependencies, matching the release build exactly.
+
+**Why this approach:**
+- ✅ No stale code in version control
+- ✅ Always fresh dependencies at build time
+- ✅ Users get pre-packaged, tested versions
+- ✅ No pip install required for end users
+
 ### Adding New Configuration Fields
 
 To add a new field (e.g., `color`, `labels`, etc.) that applies to all keywords:
