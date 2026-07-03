@@ -1,0 +1,48 @@
+name: Build and Release Flow Launcher Plugin
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+    # 1. Check out your plugin code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Setup the target Python environment
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    # 3. Vendor dependencies straight into the ./lib directory
+    - name: Install and vendor dependencies
+      run: |
+        mkdir lib
+        pip install requests pyflowlauncher python-dateutil --target ./lib
+
+    # 4. Clean up unnecessary cache artifacts to keep the zip file size tiny
+    - name: Clean up python cache files
+      run: |
+        Get-ChildItem -Path ./lib -Recurse -Filter "__pycache__" | Remove-Item -Recurse -Force
+
+    # 5. Compress the entire project root folder into a single ZIP archive
+    - name: Build ZIP Archive
+      run: |
+        Compress-Archive -Path * -DestinationPath ./Vikunja-Router.zip
+
+    # 6. Upload the compiled ZIP file straight to your GitHub Release assets page
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./Vikunja-Router.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

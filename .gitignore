@@ -25,6 +25,10 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
+# Build artifacts
+*.zip
+dist/
+
 # Virtual environments
 venv/
 .venv/
