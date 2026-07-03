@@ -16,7 +16,7 @@ class ConfigManager:
         # Flow Launcher stores plugin settings in:
         # %APPDATA%\Roaming\FlowLauncher\Settings\Plugins\<PluginName>\
         # For Python plugins, it uses the ExecuteFileName without extension as the key
-        self.plugin_name = "Vikunja"  # Matches the C# DLL name
+        self.plugin_name = "Vikunja-Python"
         self.settings_dir = Path.home() / "AppData" / "Roaming" / "FlowLauncher" / "Settings" / "Plugins" / self.plugin_name
         self.settings_file = self.settings_dir / "Settings.json"
         
@@ -55,19 +55,13 @@ class ConfigManager:
     def _initialize_settings(self) -> Dict[str, Any]:
         """Create new settings structure"""
         return {
-            "configurations": {},
-            # Legacy fields for backward compatibility with C# version
-            "serverUrl": None,
-            "apiToken": None,
-            "defaultProjectId": None,
-            "parsingMode": None
+            "configurations": {}
         }
 
     def get_current_config(self) -> Optional[Dict[str, Any]]:
         """
         Get configuration for the current plugin instance
         
-        Migrates old flat format to multitenant if needed.
         If no config exists for this ID, inherits from another instance.
         """
         configs = self.settings.get("configurations", {})
@@ -75,25 +69,6 @@ class ConfigManager:
         # If this plugin ID already has config, return it
         if self.plugin_id in configs:
             return configs[self.plugin_id]
-        
-        # Try to migrate from legacy flat format
-        if self.settings.get("serverUrl") or self.settings.get("apiToken"):
-            config = {
-                "serverUrl": self.settings.get("serverUrl", ""),
-                "apiToken": self.settings.get("apiToken", ""),
-                "defaultProjectId": self.settings.get("defaultProjectId", 1),
-                "parsingMode": self.settings.get("parsingMode", "vikunja")
-            }
-            configs[self.plugin_id] = config
-            
-            # Clear legacy fields
-            self.settings["serverUrl"] = None
-            self.settings["apiToken"] = None
-            self.settings["defaultProjectId"] = None
-            self.settings["parsingMode"] = None
-            
-            self._save_settings()
-            return config
         
         # New instance - try to inherit from another instance if available
         if configs:

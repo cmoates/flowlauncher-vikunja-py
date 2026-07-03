@@ -129,7 +129,6 @@ Settings are stored in a single `Settings.json` file with a per-instance configu
 - No configuration conflicts between instances
 - New instances inherit settings automatically
 - Single settings file for all instances
-- Easy migration from C# version
 
 ### File Structure
 
@@ -164,12 +163,7 @@ After making changes:
 
 No compilation needed!
 
-## Migration from C# Version
 
-The settings format is compatible with the C# plugin:
-- Automatically migrates old flat settings to multitenant format
-- Old C# instances can coexist with new Python instances
-- Settings are shared between both versions
 
 ## Troubleshooting
 
@@ -182,7 +176,7 @@ The settings format is compatible with the C# plugin:
 
 ### Settings not saving
 
-- Ensure `%APPDATA%\Roaming\FlowLauncher\Settings\Plugins\Vikunja\` directory exists
+- Ensure `%APPDATA%\Roaming\FlowLauncher\Settings\Plugins\Vikunja-Python\` directory exists
 - Check file permissions
 - Review Flow Launcher logs for errors
 
@@ -203,9 +197,5 @@ The Vikunja API token needs these permissions:
 
 ## License
 
-Same as original C# plugin
+See LICENSE file for details.
 
-## Credits
-
-- Original C# plugin by AntoineTA
-- Python rewrite with native multitenant support
