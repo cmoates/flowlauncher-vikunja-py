@@ -16,33 +16,50 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Setup the target Python environment
+    # 2. Extract version from git tag
+    - name: Extract version from tag
+      id: version
+      run: |
+        $tag = "${{ github.ref }}"
+        $version = $tag -replace 'refs/tags/v?', ''
+        echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    # 3. Update plugin.json with release version
+    - name: Update plugin.json version
+      run: |
+        $pluginPath = ".\plugin.json"
+        $json = Get-Content $pluginPath | ConvertFrom-Json
+        $json.Version = "${{ steps.version.outputs.VERSION }}"
+        $json | ConvertTo-Json | Set-Content $pluginPath
+
+    # 4. Setup the target Python environment
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
 
-    # 3. Vendor dependencies straight into the ./lib directory
+    # 5. Vendor dependencies straight into the ./lib directory
     - name: Install and vendor dependencies
       run: |
         mkdir lib
         pip install requests pyflowlauncher python-dateutil --target ./lib
 
-    # 4. Clean up unnecessary cache artifacts to keep the zip file size tiny
+    # 6. Clean up unnecessary cache artifacts to keep the zip file size tiny
     - name: Clean up python cache files
       run: |
         Get-ChildItem -Path ./lib -Recurse -Filter "__pycache__" | Remove-Item -Recurse -Force
 
-    # 5. Compress the entire project root folder into a single ZIP archive
+    # 7. Compress the entire project root folder into a single ZIP archive
     - name: Build ZIP Archive
       run: |
         Compress-Archive -Path * -DestinationPath ./Vikunja-Router.zip
 
-    # 6. Upload the compiled ZIP file straight to your GitHub Release assets page
+    # 8. Upload the compiled ZIP file straight to your GitHub Release assets page
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
       with:
         files: ./Vikunja-Router.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
