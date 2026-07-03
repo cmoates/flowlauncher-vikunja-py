@@ -2,11 +2,12 @@
   "$schema": "https://www.flowlauncher.com/schemas/plugin.schema.json",
   "ID": "flowlauncher-vikunja-py",
   "ActionKeywords": ["vk"],
-  "Name": "Vikunja Multi-Keyword Router",
-  "Description": "Quickly add tasks to Vikunja. Use multiple keywords for different projects.",
+  "Name": "Vikunja Multi",
+  "Description": "Quickly add tasks to Vikunja. Supports multiple keywords for different projects.",
   "Author": "cmoates",
-  "Version": "2.0.0",
+  "Version": "Unreleased",
   "Language": "Python",
-  "Website": "https://github.com/cmoates/flowlauncher-vikunja-py",
+  "Url": "https://github.com/cmoates/flowlauncher-vikunja-py",
+  "IcoPath": "icon.png",
   "ExecuteFileName": "main.py"
 }
