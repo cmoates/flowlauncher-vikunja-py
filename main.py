@@ -9,6 +9,15 @@ Each keyword can have its own complete configuration including:
 - Future extensibility (color, labels, etc.)
 """
 
+import sys
+from pathlib import Path
+
+# Add vendored dependencies to Python path
+# This ensures packaged plugin can find ./lib dependencies
+lib_path = Path(__file__).parent / 'lib'
+if lib_path.exists():
+    sys.path.insert(0, str(lib_path))
+
 from pyflowlauncher import FlowLauncher
 from config import ConfigManager
 from task_parser import TaskParser
