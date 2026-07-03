@@ -5,7 +5,7 @@ Supports both Vikunja and Todoist syntax styles
 
 import re
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 
 class TaskParser:
@@ -26,7 +26,7 @@ class TaskParser:
             'vikunja_project': re.compile(r'\+(\w+)'),
             'vikunja_label': re.compile(r'\*([^\s]+)'),
             'vikunja_priority': re.compile(r'!([1-5])'),
-            
+
             # Todoist style: #project @label p1-p5
             'todoist_project': re.compile(r'#(\w+)'),
             'todoist_label': re.compile(r'@([^\s]+)'),
@@ -36,11 +36,11 @@ class TaskParser:
     def parse(self, query: str, mode: str = MODE_VIKUNJA) -> Dict[str, Any]:
         """
         Parse a task query string
-        
+
         Args:
             query: User's task input
             mode: Parsing mode ('vikunja' or 'todoist')
-            
+
         Returns:
             Dictionary with parsed task components
         """
@@ -120,7 +120,7 @@ class TaskParser:
     def _extract_date(self, text: str) -> tuple:
         """
         Extract due date from text using natural language patterns
-        
+
         Returns:
             (cleaned_text, date_string) where date_string is ISO 8601 format or None
         """
@@ -144,7 +144,7 @@ class TaskParser:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 text = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-                
+
                 if offset == 'iso':
                     # Already ISO format
                     date_str = match.group(0)
@@ -155,7 +155,7 @@ class TaskParser:
                         days = offset()
                     else:
                         days = offset
-                    
+
                     future_date = datetime.now() + timedelta(days=days)
                     date_str = future_date.isoformat(timespec='milliseconds') + 'Z'
                     return text, date_str
