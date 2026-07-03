@@ -250,5 +250,5 @@ See LICENSE file for details.
 
 ## Credits
 
-This plugin was inspired by the original Vikunja Flow Launcher plugin in C#.
+This plugin was inspired by the original Vikunja Flow Launcher plugin in C#. (https://github.com/AntoineTA/Flow.Launcher.Plugin.Vikunja)
 
