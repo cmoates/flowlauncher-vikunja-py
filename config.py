@@ -1,45 +1,28 @@
 """
-Configuration management for Vikunja plugin with multitenant support
+Configuration management for Vikunja plugin with multi-keyword support
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 
 class ConfigManager:
-    """Manages multitenant plugin configuration"""
+    """Manages multi-keyword plugin configuration"""
 
     def __init__(self):
         """Initialize config manager with Flow Launcher settings directory"""
         # Flow Launcher stores plugin settings in:
         # %APPDATA%\Roaming\FlowLauncher\Settings\Plugins\<PluginName>\
-        # For Python plugins, it uses the ExecuteFileName without extension as the key
-        self.plugin_name = "Vikunja-Python"
+        self.plugin_name = "Vikunja"
         self.settings_dir = Path.home() / "AppData" / "Roaming" / "FlowLauncher" / "Settings" / "Plugins" / self.plugin_name
         self.settings_file = self.settings_dir / "Settings.json"
-        
-        # Get the current plugin ID from environment or plugin.json
-        self.plugin_id = os.environ.get("PLUGIN_ID", self._get_default_plugin_id())
         
         # Ensure directory exists
         self.settings_dir.mkdir(parents=True, exist_ok=True)
         
         # Load or initialize settings
         self.settings = self._load_settings()
-
-    def _get_default_plugin_id(self) -> str:
-        """Get plugin ID from plugin.json or use a default"""
-        try:
-            plugin_json_path = Path(__file__).parent / "plugin.json"
-            if plugin_json_path.exists():
-                with open(plugin_json_path) as f:
-                    data = json.load(f)
-                    return data.get("ID", "default")
-        except Exception:
-            pass
-        return "default"
 
     def _load_settings(self) -> Dict[str, Any]:
         """Load settings from disk or create default structure"""
